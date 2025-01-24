@@ -35,11 +35,15 @@ const (
 const (
 	// CalculatorServiceSumProcedure is the fully-qualified name of the CalculatorService's Sum RPC.
 	CalculatorServiceSumProcedure = "/calculator.v1.CalculatorService/Sum"
+	// CalculatorServicePrimeNumberDecompositionProcedure is the fully-qualified name of the
+	// CalculatorService's PrimeNumberDecomposition RPC.
+	CalculatorServicePrimeNumberDecompositionProcedure = "/calculator.v1.CalculatorService/PrimeNumberDecomposition"
 )
 
 // CalculatorServiceClient is a client for the calculator.v1.CalculatorService service.
 type CalculatorServiceClient interface {
 	Sum(context.Context, *connect.Request[v1.SumRequest]) (*connect.Response[v1.SumResponse], error)
+	PrimeNumberDecomposition(context.Context, *connect.Request[v1.PrimeNumberDecompositionRequest]) (*connect.ServerStreamForClient[v1.PrimeNumberDecompositionResponse], error)
 }
 
 // NewCalculatorServiceClient constructs a client for the calculator.v1.CalculatorService service.
@@ -59,12 +63,19 @@ func NewCalculatorServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(calculatorServiceMethods.ByName("Sum")),
 			connect.WithClientOptions(opts...),
 		),
+		primeNumberDecomposition: connect.NewClient[v1.PrimeNumberDecompositionRequest, v1.PrimeNumberDecompositionResponse](
+			httpClient,
+			baseURL+CalculatorServicePrimeNumberDecompositionProcedure,
+			connect.WithSchema(calculatorServiceMethods.ByName("PrimeNumberDecomposition")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // calculatorServiceClient implements CalculatorServiceClient.
 type calculatorServiceClient struct {
-	sum *connect.Client[v1.SumRequest, v1.SumResponse]
+	sum                      *connect.Client[v1.SumRequest, v1.SumResponse]
+	primeNumberDecomposition *connect.Client[v1.PrimeNumberDecompositionRequest, v1.PrimeNumberDecompositionResponse]
 }
 
 // Sum calls calculator.v1.CalculatorService.Sum.
@@ -72,9 +83,15 @@ func (c *calculatorServiceClient) Sum(ctx context.Context, req *connect.Request[
 	return c.sum.CallUnary(ctx, req)
 }
 
+// PrimeNumberDecomposition calls calculator.v1.CalculatorService.PrimeNumberDecomposition.
+func (c *calculatorServiceClient) PrimeNumberDecomposition(ctx context.Context, req *connect.Request[v1.PrimeNumberDecompositionRequest]) (*connect.ServerStreamForClient[v1.PrimeNumberDecompositionResponse], error) {
+	return c.primeNumberDecomposition.CallServerStream(ctx, req)
+}
+
 // CalculatorServiceHandler is an implementation of the calculator.v1.CalculatorService service.
 type CalculatorServiceHandler interface {
 	Sum(context.Context, *connect.Request[v1.SumRequest]) (*connect.Response[v1.SumResponse], error)
+	PrimeNumberDecomposition(context.Context, *connect.Request[v1.PrimeNumberDecompositionRequest], *connect.ServerStream[v1.PrimeNumberDecompositionResponse]) error
 }
 
 // NewCalculatorServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -90,10 +107,18 @@ func NewCalculatorServiceHandler(svc CalculatorServiceHandler, opts ...connect.H
 		connect.WithSchema(calculatorServiceMethods.ByName("Sum")),
 		connect.WithHandlerOptions(opts...),
 	)
+	calculatorServicePrimeNumberDecompositionHandler := connect.NewServerStreamHandler(
+		CalculatorServicePrimeNumberDecompositionProcedure,
+		svc.PrimeNumberDecomposition,
+		connect.WithSchema(calculatorServiceMethods.ByName("PrimeNumberDecomposition")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/calculator.v1.CalculatorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CalculatorServiceSumProcedure:
 			calculatorServiceSumHandler.ServeHTTP(w, r)
+		case CalculatorServicePrimeNumberDecompositionProcedure:
+			calculatorServicePrimeNumberDecompositionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -105,4 +130,8 @@ type UnimplementedCalculatorServiceHandler struct{}
 
 func (UnimplementedCalculatorServiceHandler) Sum(context.Context, *connect.Request[v1.SumRequest]) (*connect.Response[v1.SumResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("calculator.v1.CalculatorService.Sum is not implemented"))
+}
+
+func (UnimplementedCalculatorServiceHandler) PrimeNumberDecomposition(context.Context, *connect.Request[v1.PrimeNumberDecompositionRequest], *connect.ServerStream[v1.PrimeNumberDecompositionResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("calculator.v1.CalculatorService.PrimeNumberDecomposition is not implemented"))
 }

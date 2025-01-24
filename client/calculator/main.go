@@ -21,11 +21,24 @@ func main() {
 	})
 
 	response, err := client.Sum(context.Background(), request)
-	
+
 	if err != nil {
 		log.Fatalf("Failed to sum: %v", err)
 		return
 	}
 
 	fmt.Println("Sum:", response.Msg.Result)
+
+	stream, err := client.PrimeNumberDecomposition(context.Background(), connect.NewRequest(&calculatorv1.PrimeNumberDecompositionRequest{
+		Number: 120,
+	}))
+
+	if err != nil {
+		log.Fatalf("Failed to prime number decomposition: %v", err)
+		return
+	}
+
+	for stream.Receive() {
+		fmt.Println("PrimeNumberDecomposition:", stream.Msg().PrimeFactor)
+	}
 }

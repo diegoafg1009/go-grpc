@@ -68,3 +68,17 @@ func (CalculatorService) Sum(ctx context.Context, req *connect.Request[calculato
 	}
 	return connect.NewResponse(&calculatorv1.SumResponse{Result: sum}), nil
 }
+
+func (CalculatorService) PrimeNumberDecomposition(ctx context.Context, req *connect.Request[calculatorv1.PrimeNumberDecompositionRequest], stream *connect.ServerStream[calculatorv1.PrimeNumberDecompositionResponse]) error {
+	number := req.Msg.Number
+	divisor := int64(2)
+	for number > 1 {
+		if number%divisor == 0 {
+			stream.Send(&calculatorv1.PrimeNumberDecompositionResponse{PrimeFactor: divisor})
+			number = number / divisor
+		} else {
+			divisor++
+		}
+	}
+	return nil
+}
