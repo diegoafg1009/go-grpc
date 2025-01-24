@@ -56,6 +56,18 @@ func (GreetService) GreetManyTimes(ctx context.Context, req *connect.Request[gre
 	return nil
 }
 
+func (GreetService) LongGreet(ctx context.Context, stream *connect.ClientStream[greetv1.GreetRequest]) (*connect.Response[greetv1.GreetResponse], error) {
+	response := ""
+	for stream.Receive() {
+		name := stream.Msg().FirstName
+		greeting := fmt.Sprintf("Hello, %s\n", name)
+		response += greeting
+	}
+	return connect.NewResponse(&greetv1.GreetResponse{
+		Greeting: response,
+	}), nil
+}
+
 type CalculatorService struct {
 	calculatorv1connect.UnimplementedCalculatorServiceHandler
 }

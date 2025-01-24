@@ -38,12 +38,15 @@ const (
 	// GreetServiceGreetManyTimesProcedure is the fully-qualified name of the GreetService's
 	// GreetManyTimes RPC.
 	GreetServiceGreetManyTimesProcedure = "/greet.v1.GreetService/GreetManyTimes"
+	// GreetServiceLongGreetProcedure is the fully-qualified name of the GreetService's LongGreet RPC.
+	GreetServiceLongGreetProcedure = "/greet.v1.GreetService/LongGreet"
 )
 
 // GreetServiceClient is a client for the greet.v1.GreetService service.
 type GreetServiceClient interface {
 	Greet(context.Context, *connect.Request[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
 	GreetManyTimes(context.Context, *connect.Request[v1.GreetRequest]) (*connect.ServerStreamForClient[v1.GreetResponse], error)
+	LongGreet(context.Context) *connect.ClientStreamForClient[v1.GreetRequest, v1.GreetResponse]
 }
 
 // NewGreetServiceClient constructs a client for the greet.v1.GreetService service. By default, it
@@ -69,6 +72,12 @@ func NewGreetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(greetServiceMethods.ByName("GreetManyTimes")),
 			connect.WithClientOptions(opts...),
 		),
+		longGreet: connect.NewClient[v1.GreetRequest, v1.GreetResponse](
+			httpClient,
+			baseURL+GreetServiceLongGreetProcedure,
+			connect.WithSchema(greetServiceMethods.ByName("LongGreet")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -76,6 +85,7 @@ func NewGreetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type greetServiceClient struct {
 	greet          *connect.Client[v1.GreetRequest, v1.GreetResponse]
 	greetManyTimes *connect.Client[v1.GreetRequest, v1.GreetResponse]
+	longGreet      *connect.Client[v1.GreetRequest, v1.GreetResponse]
 }
 
 // Greet calls greet.v1.GreetService.Greet.
@@ -88,10 +98,16 @@ func (c *greetServiceClient) GreetManyTimes(ctx context.Context, req *connect.Re
 	return c.greetManyTimes.CallServerStream(ctx, req)
 }
 
+// LongGreet calls greet.v1.GreetService.LongGreet.
+func (c *greetServiceClient) LongGreet(ctx context.Context) *connect.ClientStreamForClient[v1.GreetRequest, v1.GreetResponse] {
+	return c.longGreet.CallClientStream(ctx)
+}
+
 // GreetServiceHandler is an implementation of the greet.v1.GreetService service.
 type GreetServiceHandler interface {
 	Greet(context.Context, *connect.Request[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
 	GreetManyTimes(context.Context, *connect.Request[v1.GreetRequest], *connect.ServerStream[v1.GreetResponse]) error
+	LongGreet(context.Context, *connect.ClientStream[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
 }
 
 // NewGreetServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -113,12 +129,20 @@ func NewGreetServiceHandler(svc GreetServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(greetServiceMethods.ByName("GreetManyTimes")),
 		connect.WithHandlerOptions(opts...),
 	)
+	greetServiceLongGreetHandler := connect.NewClientStreamHandler(
+		GreetServiceLongGreetProcedure,
+		svc.LongGreet,
+		connect.WithSchema(greetServiceMethods.ByName("LongGreet")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/greet.v1.GreetService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GreetServiceGreetProcedure:
 			greetServiceGreetHandler.ServeHTTP(w, r)
 		case GreetServiceGreetManyTimesProcedure:
 			greetServiceGreetManyTimesHandler.ServeHTTP(w, r)
+		case GreetServiceLongGreetProcedure:
+			greetServiceLongGreetHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -134,4 +158,8 @@ func (UnimplementedGreetServiceHandler) Greet(context.Context, *connect.Request[
 
 func (UnimplementedGreetServiceHandler) GreetManyTimes(context.Context, *connect.Request[v1.GreetRequest], *connect.ServerStream[v1.GreetResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("greet.v1.GreetService.GreetManyTimes is not implemented"))
+}
+
+func (UnimplementedGreetServiceHandler) LongGreet(context.Context, *connect.ClientStream[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("greet.v1.GreetService.LongGreet is not implemented"))
 }

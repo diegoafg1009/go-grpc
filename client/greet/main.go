@@ -38,6 +38,26 @@ func main() {
 	}
 
 	for stream.Receive() {
-		fmt.Println("GreetManyTimes:", response.Msg.Greeting)
+		fmt.Println("GreetManyTimes:", stream.Msg().Greeting)
 	}
+
+	longGreetClient := client.LongGreet(context.Background())
+
+	longGreetClient.Send(&greetv1.GreetRequest{
+		FirstName: "Diego",
+	})
+
+	longGreetClient.Send(&greetv1.GreetRequest{
+		FirstName: "Andre",
+	})
+
+	response, err = longGreetClient.CloseAndReceive()
+
+	if err != nil {
+		log.Fatalf("Failed to long greet: %v", err)
+		return
+	}
+
+	fmt.Println("LongGreet:")
+	fmt.Println(response.Msg.Greeting)
 }
