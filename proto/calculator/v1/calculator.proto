@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package calculator.v1;
+
+message SumRequest {
+    repeated int32 numbers = 1;
+}
+
+message SumResponse {
+    int32 result = 1;
+}
+
+service CalculatorService {
+    rpc Sum(SumRequest) returns (SumResponse);
+}
