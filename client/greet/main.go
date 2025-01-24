@@ -28,5 +28,16 @@ func main() {
 		return
 	}
 
-	fmt.Println(response.Msg.Greeting)
+	fmt.Println("Greet:", response.Msg.Greeting)
+
+	stream, err := client.GreetManyTimes(context.Background(), request)
+
+	if err != nil {
+		log.Fatalf("Failed to greet many times: %v", err)
+		return
+	}
+
+	for stream.Receive() {
+		fmt.Println("GreetManyTimes:", response.Msg.Greeting)
+	}
 }

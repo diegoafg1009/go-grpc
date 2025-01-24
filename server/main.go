@@ -18,7 +18,7 @@ const addr = "localhost:8080"
 
 func main() {
 	mux := http.NewServeMux()
-	
+
 	path, handler := greetv1connect.NewGreetServiceHandler(GreetService{})
 	mux.Handle(path, handler)
 
@@ -43,6 +43,17 @@ func (GreetService) Greet(ctx context.Context, req *connect.Request[greetv1.Gree
 	return connect.NewResponse(&greetv1.GreetResponse{
 		Greeting: greeting,
 	}), nil
+}
+
+func (GreetService) GreetManyTimes(ctx context.Context, req *connect.Request[greetv1.GreetRequest], stream *connect.ServerStream[greetv1.GreetResponse]) error {
+	firstName := req.Msg.FirstName
+	for i := 0; i < 10; i++ {
+		greeting := fmt.Sprintf("Hello, %s! - %d", firstName, i)
+		stream.Send(&greetv1.GreetResponse{
+			Greeting: greeting,
+		})
+	}
+	return nil
 }
 
 type CalculatorService struct {
